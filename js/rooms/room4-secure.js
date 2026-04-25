@@ -156,7 +156,9 @@ be charged to your access token.
     new THREE.MeshBasicMaterial({ color:0x6effb4 }));
   bdGlow.position.x = -0.03; bdGlow.rotation.y = -Math.PI/2;
   backDoor.add(bdGlow);
-  backDoor.position.set(W/2 - 0.15, 2.4, 1.5);
+  // 玩家面门时左手边 = -z 方向（红色切断闸在 +z 一侧）
+  // 放上半段右墙 z=-3，避开门洞穿模也不和切断闸抢位置
+  backDoor.position.set(W/2 - 0.15, 2.4, -3);
   group.add(backDoor);
   pickables.push(pickable({ id:'r4_back', mesh:backDoor, label:'下 7F · 主管办公室',
     onClick: () => engine.goto(2)

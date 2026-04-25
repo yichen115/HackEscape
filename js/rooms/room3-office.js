@@ -395,14 +395,6 @@ export default function build() {
       engine.goto(3);    // 已经解过，直接上 8F
       return;
     }
-    // 出门前检查 —— 上去就 02:00 倒计时，缺东西回不来很坑
-    const missing = [];
-    if (!engine.inventory.has('r3_obelisk_usb')) missing.push('OBELISK USB（保险箱里）');
-    if (!engine.inventory.has('r3_email')) missing.push('Marcus 邮件证据（笔记本上）');
-    if (missing.length) {
-      engine.showHint('上去前再确认下：还差 ' + missing.join(' · '), 4000);
-      return;
-    }
     openKeypad({
       title:'机要室门禁', desc:'— 4 位数字 —', length:4, answer: ANS.floor8Code,
       onSuccess: () => {
