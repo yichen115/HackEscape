@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hack Escape · 黑客密室逃脱 v2</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body class="scan vignette">
+
+<div id="scene"></div>
+
+<!-- 中心十字准星 + 交互提示 -->
+<div id="crosshair"><span class="bar h"></span><span class="bar v"></span></div>
+<div id="reticle-label"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="objective" class="panel">
+    <div class="title">// OBJECTIVE</div>
+    <div class="task" id="obj-text">…</div>
+  </div>
+  <div id="room-tag" class="panel"><span id="room-tag-text">—</span></div>
+  <div id="inventory" class="panel">
+    <div class="title">// INVENTORY</div>
+    <div id="inv-list"><div class="inv-empty">(空)</div></div>
+  </div>
+</div>
+
+<!-- 静音开关 -->
+<button id="mute-toggle" title="静音 / 开声 (M)">🔇</button>
+
+<!-- 倒计时（房 4 用） -->
+<div id="countdown" class="hidden">
+  <div class="cd-label">DATA EXFILTRATION</div>
+  <div class="cd-time" id="cd-time">02:00</div>
+  <div class="cd-bar"><div class="cd-fill" id="cd-fill"></div></div>
+</div>
+
+<!-- 操作提示条 -->
+<div id="hint"></div>
+
+<!-- 进入房间过场字幕 -->
+<div id="room-banner" class="hidden">
+  <div class="rb-floor" id="rb-floor"></div>
+  <div class="rb-name" id="rb-name"></div>
+  <div class="rb-desc" id="rb-desc"></div>
+</div>
+
+<!-- 全屏黑遮罩（转场） -->
+<div id="fade"></div>
+
+<!-- 通用查看器 -->
+<div class="modal" id="mView">
+  <button class="close" data-close="mView">[ ESC ] 关闭</button>
+  <div id="mViewBody"></div>
+</div>
+
+<!-- 密码盘 -->
+<div class="modal" id="mKey">
+  <div class="box" style="position:relative; width:340px;">
+    <button class="close" data-close="mKey">ESC 关闭</button>
+    <h2 id="keyTitle">输入密码</h2>
+    <p id="keyDesc" style="font-size:13px; color:#6a9e80;"></p>
+    <div class="code-display" id="keyDisp">_ _ _ _</div>
+    <div class="code-fb" id="keyFb">&nbsp;</div>
+    <div class="keypad" id="keyPad"></div>
+  </div>
+</div>
+
+<!-- 终端 -->
+<div class="modal" id="mTerm">
+  <div id="term-box" style="position:relative;">
+    <div id="term-head"><span id="term-prompt-head">root@host:~#</span><span style="cursor:pointer" data-close="mTerm">[ X ]</span></div>
+    <div id="term-out"></div>
+    <div id="term-in-row"><span id="term-prompt">$</span><input id="term-in" autocomplete="off" spellcheck="false"></div>
+  </div>
+</div>
+
+<!-- 登录窗 -->
+<div class="modal" id="mLogin">
+  <div class="box login-box" style="position:relative;">
+    <button class="close" data-close="mLogin">ESC 关闭</button>
+    <h2 id="login-title">SECURE LOGIN</h2>
+    <p id="login-sub" style="font-size:13px; color:#6a9e80; letter-spacing:2px;">— —</p>
+    <div class="lbl">USER</div>
+    <input id="loginUser" value="admin" readonly>
+    <div class="lbl">PASSWORD</div>
+    <input id="loginPw" type="password" placeholder="••••••••">
+    <div class="code-fb" id="loginFb">&nbsp;</div>
+    <button class="go" id="loginGo">LOGIN</button>
+  </div>
+</div>
+
+<!-- 开场 -->
+<div class="modal show" id="intro">
+  <div class="box">
+    <div class="title flicker">HACK ESCAPE</div>
+    <p style="color:#6effb4; letter-spacing:3px;">3 月 13 日 · 凌晨 01:47<br>Meridian Holdings · 数据中心 B3</p>
+    <p>三周前他们打电话来：标准红队演练，一周交付，价钱够你过半年。你接了——这是你独立接单后第三个客户。</p>
+    <p>23:47，你刚拿到核心认证服务器的 root shell。<b>23:55，身后机房门"咔"地一声反锁。</b>你的手机没信号，门外密码盘亮着红灯。</p>
+    <p>现在 01:47。空调温度计 38°C 还在涨，走廊那头的磁带库正在按计划归档覆盖。<b>有人专门挑了一个没有内部门卡、没人陪同、没有指挥链的外包打工人来当替罪羊。</b></p>
+    <p>02:00 数据外泄就要完成。等天亮，审计日志上写的会是"PEN-TESTER 外泄了 240 万条客户记录"——你的脸下个新闻轮播就要上了。</p>
+    <p style="color:#ffea99;">你只剩 13 分钟。从地下三层一路黑回去——<b>抓出内鬼，把锅扣回他头上。</b></p>
+    <p style="color:#6effb4; font-size:13px;">· 鼠标 视角 · WASD 移动 · Shift 加速 · E 交互 · 数字键 输入密码 · ESC 关闭弹窗 · M 切换音效（默认关闭）</p>
+    <button class="start" id="btn-start">BOOT</button>
+  </div>
+</div>
+
+<!-- 通关 -->
+<div class="modal" id="win">
+  <div class="box">
+    <div class="title">ACCESS GRANTED</div>
+    <p style="color:#6effb4; letter-spacing:3px;">02:14 · 8F 机要室</p>
+    <p>证据包已发往 FBI Cyber Crimes、Meridian 董事会，以及你私人加密备份。M-0427 账户被远端冻结，KIX 候机厅闸机刚刚收到追缉令——Marcus 从背包掏护照的那一刻，安检员的电脑同时亮起红色横幅。</p>
+    <p>红色警示灯熄灭。空调风口慢慢凉下来。<br>大屏上倒计时停在 "TRANSFER ABORTED"，你拿起背包走出 8F。</p>
+    <p>明早 9F 那位醒来会收到一封董事会邮件，主题是"关于近期内控失职的紧急复盘"。<br>你已经决定下一份合同接哪边了——<b>不是这边。</b></p>
+    <p id="win-stats" style="color:#6effb4;"></p>
+    <button class="again" id="btn-again">RESTART</button>
+  </div>
+</div>
+
+<!-- 失败 (房 4 倒计时归零) -->
+<div class="modal" id="lose">
+  <div class="box">
+    <div class="title" style="color:#ff5050;">TRANSFER COMPLETE</div>
+    <p style="color:#ff7777; letter-spacing:3px;">02:00:00</p>
+    <p>240 万条客户记录上传完成，包括银行账户、医疗记录、未脱敏身份证扫描。</p>
+    <p>审计日志最后一行更新："PEN-TESTER 离线退出会话。"<br>你手里没有任何能反驳它的东西。</p>
+    <p>明早开门的将是 FBI 和媒体记者——<br>Marcus 已经登上去东南亚的航班，你的脸正在新闻轮播。</p>
+    <button class="again" id="btn-retry">RESTART</button>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
