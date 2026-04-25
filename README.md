@@ -346,3 +346,7 @@ HackEscape/
 
 > *"You think you locked me out?*
 > *I am the back door."*
+
+
+
+操作逻辑和技术由 AI 参考自：https://github.com/CNSleepybear/echoes-of-yesterday

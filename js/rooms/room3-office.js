@@ -66,25 +66,45 @@ export default function build() {
     leg.position.set(x, 0.5, z); desk.add(leg);
   }
 
-  // 抽屉（在桌下右侧）
+  // 抽屉（桌下右侧，挂在椅子那一侧 -z；敞口盒结构，向 -z 拉出）
   const deskDrawer = new THREE.Group();
-  const ddBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.6), M.wood);
-  ddBody.position.y = 0.7; deskDrawer.add(ddBody);
-  const ddHandle = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.04),
+  deskDrawer.position.set(1.0, 0.7, -0.4);   // 局部 -z = 椅子方向
+  desk.add(deskDrawer);
+  const DR_W = 0.85, DR_H = 0.3, DR_D = 0.6, DR_T = 0.04;
+  const drawerMat = new THREE.MeshStandardMaterial({ color:0x4a3826, roughness:0.7 });
+  // 底板
+  const drBottom = new THREE.Mesh(new THREE.BoxGeometry(DR_W, DR_T, DR_D), drawerMat);
+  drBottom.position.y = -DR_H/2; deskDrawer.add(drBottom);
+  // 后板（朝 +z，朝向桌子中心）
+  const drBack = new THREE.Mesh(new THREE.BoxGeometry(DR_W, DR_H, DR_T), drawerMat);
+  drBack.position.set(0, 0, +DR_D/2 - DR_T/2); deskDrawer.add(drBack);
+  // 左右侧板
+  const drLeftWall = new THREE.Mesh(new THREE.BoxGeometry(DR_T, DR_H, DR_D), drawerMat);
+  drLeftWall.position.set(-DR_W/2 + DR_T/2, 0, 0); deskDrawer.add(drLeftWall);
+  const drRightWall = new THREE.Mesh(new THREE.BoxGeometry(DR_T, DR_H, DR_D), drawerMat);
+  drRightWall.position.set(DR_W/2 - DR_T/2, 0, 0); deskDrawer.add(drRightWall);
+  // 前面板（朝 -z，从椅子那侧能看到的"门面"）
+  const drFront = new THREE.Mesh(new THREE.BoxGeometry(DR_W, DR_H + 0.05, DR_T),
+    new THREE.MeshStandardMaterial({ color:0x553f25, roughness:0.6 }));
+  drFront.position.set(0, 0, -DR_D/2 + DR_T/2); deskDrawer.add(drFront);
+  // 把手（在前面板外侧）
+  const ddHandle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.05),
     new THREE.MeshStandardMaterial({ color:0xc8aa66, metalness:0.6 }));
-  ddHandle.position.set(0, 0.7, 0.32); deskDrawer.add(ddHandle);
-  deskDrawer.position.set(1.0, 0, 0.4); desk.add(deskDrawer);
+  ddHandle.position.set(0, 0, -DR_D/2 - 0.025); deskDrawer.add(ddHandle);
   pickables.push(pickable({ id:'r3_desk_drawer', mesh:deskDrawer, label:'桌下抽屉', onClick: onClickDeskDrawer }));
 
-  // 抽屉里的指纹粉末套装（隐藏）
+  // 指纹粉末套装：作为抽屉子物体，跟着抽屉一起被拉出来
   const dustKit = new THREE.Group();
-  const dkBox = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.18),
-    new THREE.MeshStandardMaterial({ color:0x101418 }));
-  dkBox.position.y = 0.04; dustKit.add(dkBox);
-  const dkLid = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.18),
-    new THREE.MeshStandardMaterial({ color:0x884444 }));
-  dkLid.position.y = 0.09; dustKit.add(dkLid);
-  dustKit.position.set(-0.5, 0.95, -2.1); dustKit.visible = false; group.add(dustKit);
+  const dkBox = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.10, 0.20),
+    new THREE.MeshStandardMaterial({ color:0x111418 }));
+  dkBox.position.y = 0.05; dustKit.add(dkBox);
+  const dkLid = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.025, 0.20),
+    new THREE.MeshStandardMaterial({ color:0xaa4040, emissive:0x331010, emissiveIntensity:0.6 }));
+  dkLid.position.y = 0.115; dustKit.add(dkLid);
+  // 摆放在抽屉前部（拉出后正好露在抽屉口）
+  dustKit.position.set(0, -DR_H/2 + 0.04, -0.12);
+  dustKit.visible = false;
+  deskDrawer.add(dustKit);
   pickables.push(pickable({ id:'r3_dustkit', mesh:dustKit, label:'指纹粉末套装', onClick: () => {
     if (!F.deskDrawerOpen) return;
     if (F.dustTaken) { engine.showHint('已经在身上了。'); return; }
@@ -110,7 +130,9 @@ export default function build() {
   const fpsensor = new THREE.Mesh(new THREE.CircleGeometry(0.04, 16),
     new THREE.MeshStandardMaterial({ color:0x9999cc, emissive:0x222266 }));
   fpsensor.rotation.x = -Math.PI/2; fpsensor.position.set(0.32, 1.13, -0.05); laptop.add(fpsensor);
-  laptop.position.set(-1.3, 0, -2.0); group.add(laptop);
+  laptop.position.set(-1.3, 0, -2.6);
+  laptop.rotation.y = Math.PI;          // 屏幕朝椅子方向（-z）—— Marcus 的视角
+  group.add(laptop);
   pickables.push(pickable({ id:'r3_laptop', mesh:laptop, label:'笔记本电脑 (指纹锁)', onClick: onClickLaptop }));
 
   // 桌上家庭相框（小）
@@ -120,7 +142,8 @@ export default function build() {
   const phPic = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.34),
     new THREE.MeshBasicMaterial({ map: makeFamilyPhotoTex(), toneMapped:false }));
   phPic.position.z = 0.03; photo.add(phPic);
-  photo.position.set(-2.2, 1.32, -2.4); photo.rotation.y = 0.3;
+  photo.position.set(-2.2, 1.32, -2.7);
+  photo.rotation.y = Math.PI - 0.3;     // 朝椅子方向，并保留原来的 17° 微侧
   group.add(photo);
   pickables.push(pickable({ id:'r3_photo', mesh:photo, label:'家庭相框', onClick: () => {
     F.photoSeen = true;
@@ -277,9 +300,11 @@ export default function build() {
   const ambient2 = new THREE.PointLight(0xffe0b0, 0.6, 14, 1.6);
   ambient2.position.set(2, 4, 2); group.add(ambient2);
 
-  // ========= 装饰：书架（不挡）=========
+  // ========= 装饰：书架 (后墙，给右墙让出返回门位置) =========
   const bookShelf = new THREE.Group();
-  bookShelf.position.set(W/2 - 0.5, 0, -3.5); group.add(bookShelf);
+  bookShelf.position.set(2.5, 0, -4.3);
+  bookShelf.rotation.y = Math.PI / 2;
+  group.add(bookShelf);
   const shelfBox = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.2, 1.4), M.wood);
   shelfBox.position.y = 1.6; bookShelf.add(shelfBox);
   for (let row=0; row<3; row++) for (let i=0; i<7; i++) {
@@ -297,8 +322,16 @@ export default function build() {
     }
     F.deskDrawerOpen = true;
     SFX.drawerSlide();
-    deskDrawer.position.z += 0.25; // 拉出
     dustKit.visible = true;
+    // 抽屉整体向 -z 拉出 0.45（向椅子那一侧）
+    const startZ = deskDrawer.position.z;
+    const targetZ = startZ - 0.45;
+    let t = 0;
+    const iv = setInterval(() => {
+      t += 0.06;
+      deskDrawer.position.z = startZ + (targetZ - startZ) * Math.min(1, t);
+      if (t >= 1) clearInterval(iv);
+    }, 16);
     pickables.find(p => p.id === 'r3_desk_drawer').label = '抽屉 (已开)';
     engine.showHint('抽屉里：指纹粉末套装。');
     advance();

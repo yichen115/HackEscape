@@ -305,6 +305,7 @@ be charged to your access token.
             return;
           }
           t.print('[sudo] admin override token for /usr/bin/kill -9 7747:');
+          t.print('       (token = originating sysadmin employee ID)');
           t.requestInput((token) => {
             const norm = (token || '').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
             if (norm !== 'M0427') {
