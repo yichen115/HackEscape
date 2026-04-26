@@ -2,7 +2,7 @@
 // 房间 3: 主管办公室 (7F)
 import { engine } from '../engine.js';
 import { M } from '../materials.js';
-import { aabb } from '../collision.js';
+import { aabb, aabbFromMesh } from '../collision.js';
 import { pickable } from '../interact.js';
 import { makeFamilyPhotoTex, makePaintingTex, makeEmailHTML } from '../tex.js';
 import { openViewer } from '../ui/viewer.js';
@@ -315,6 +315,13 @@ export default function build() {
       new THREE.MeshStandardMaterial({ color: 0x553a14 + (i*0x111111 % 0xffffff) }));
     book.position.set(0, 1.0 + row*0.7, -0.5 + i*0.18); bookShelf.add(book);
   }
+
+  // === 家具碰撞（能挡能站）===
+  group.updateMatrixWorld(true);
+  walls.push(aabbFromMesh(desk, 0.02));      // 办公桌 (顶 1.11m，可跳上)
+  walls.push(aabbFromMesh(wcab, 0.02));      // 酒柜 (顶 ~2.2m，跳不上但挡)
+  walls.push(aabbFromMesh(bookShelf, 0.02)); // 书架 (顶 ~3.2m，挡)
+  walls.push(aabbFromMesh(chair, 0.02));     // 皮椅 (低，可跳上)
 
   // ========= 交互逻辑 =========
   function onClickDeskDrawer() {

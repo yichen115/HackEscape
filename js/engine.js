@@ -100,6 +100,8 @@ async function goto(idx, { skipFade=false } = {}) {
   engine.player.pos.copy(newRoom.spawnPos);
   engine.player.yaw   = newRoom.spawnYaw   ?? 0;
   engine.player.pitch = newRoom.spawnPitch ?? 0;
+  engine.player.vy = 0;             // 重置垂直状态，避免上一房间的跳跃残留
+  engine.player.grounded = true;
 
   // 标签 / 目标
   setRoomTag(newRoom.title || '—');
@@ -123,6 +125,8 @@ const player = {
   yaw: 0, pitch: 0,
   height: 1.65, radius: 0.35,
   paused: false,    // 模态打开时为 true
+  vy: 0,            // 垂直速度（跳跃 / 重力）
+  grounded: true,   // 是否在某个表面（地板或家具顶）
 };
 
 // === 主循环 ===

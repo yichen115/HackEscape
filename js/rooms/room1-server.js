@@ -2,7 +2,7 @@
 // 房间 1: 服务器机房 (B3)
 import { engine } from '../engine.js';
 import { M, emissive } from '../materials.js';
-import { aabb } from '../collision.js';
+import { aabb, aabb3, aabbFromMesh } from '../collision.js';
 import { pickable } from '../interact.js';
 import { makeMonitorTex, makePhotoTex, makeCalendarTex, makeWhiteboardTex } from '../tex.js';
 import { openViewer } from '../ui/viewer.js';
@@ -336,12 +336,21 @@ export default function build() {
   room.add(keyPanel);
   pickables.push(pickable({ id:'r1_doorpad', mesh:keyPanel, label:'门禁键盘', onClick: onClickDoor }));
 
-  // 杂物（不挡）
+  // 杂物箱：1×1×1，可跳上
   for (const [x,z] of [[-6,4],[-5,4.6],[6,-4.5]]) {
     const box = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),
       new THREE.MeshStandardMaterial({ color:0x5a3d1c, roughness:0.9 }));
     box.position.set(x, 0.5, z); room.add(box);
+    walls.push(aabb3(x-0.5, 0, z-0.5, x+0.5, 1, z+0.5));
   }
+
+  // === 家具碰撞（能挡能站）===
+  group.updateMatrixWorld(true);
+  walls.push(aabbFromMesh(desk, 0.02));     // 办公桌 (顶 1.11m，可跳上)
+  walls.push(aabbFromMesh(pcTower, 0.02));  // 主机 (顶 1.1m，可跳上)
+  walls.push(aabbFromMesh(monitor, 0.02));  // 显示器
+  walls.push(aabbFromMesh(cab, 0.02));      // 档案柜 (顶 3.4m，挡住但跳不上)
+  rackGroups.forEach(r => walls.push(aabbFromMesh(r, 0.02)));
 
   // ========= 帧动画（警示灯脉动 + LED 闪烁 + 警报） =========
   let elapsed = 0;

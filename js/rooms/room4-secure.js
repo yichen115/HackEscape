@@ -2,7 +2,7 @@
 // 房间 4: 顶层机要室 (8F) — 高潮 · 倒计时
 import { engine } from '../engine.js';
 import { M } from '../materials.js';
-import { aabb } from '../collision.js';
+import { aabb, aabbFromMesh } from '../collision.js';
 import { pickable } from '../interact.js';
 import { makePosterTex } from '../tex.js';
 import { openViewer } from '../ui/viewer.js';
@@ -198,6 +198,12 @@ be charged to your access token.
     }
     engine.showHint('物理切断会触发整层警报 — 还是优先在终端里 kill 进程。');
   }}));
+
+  // === 家具碰撞（能挡能站）===
+  group.updateMatrixWorld(true);
+  walls.push(aabbFromMesh(podium, 0.02));    // 中央 podium (顶 0.32m，轻松跳上)
+  walls.push(aabbFromMesh(ws, 0.02));        // 工作站 (顶 1.67m，从 podium 上能跳)
+  walls.push(aabbFromMesh(lever, 0.02));     // 紧急切断闸柱
 
   // ========= 灯光 =========
   group.add(new THREE.AmbientLight(0x4060a0, 0.5));

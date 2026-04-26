@@ -2,7 +2,7 @@
 // 房间 2: 监控室 (6F)
 import { engine } from '../engine.js';
 import { M } from '../materials.js';
-import { aabb } from '../collision.js';
+import { aabb, aabbFromMesh } from '../collision.js';
 import { pickable } from '../interact.js';
 import { makeCCTVTex, makeConsoleTex, makeMonitorWBTex } from '../tex.js';
 import { openViewer } from '../ui/viewer.js';
@@ -342,6 +342,14 @@ export default function build() {
   pickables.push(pickable({ id:'r2_back', mesh:backToR1, label:'下 B3 · 服务器机房',
     onClick: () => engine.goto(0)
   }));
+
+  // === 家具碰撞（能挡能站）===
+  group.updateMatrixWorld(true);
+  walls.push(aabbFromMesh(console1, 0.02));    // 主控台 (顶 ~1.1m，可跳上)
+  walls.push(aabbFromMesh(drawer, 0.02));      // 抽屉
+  walls.push(aabbFromMesh(rack, 0.02));        // 衣帽架（细，半挡）
+  walls.push(aabbFromMesh(shelf, 0.02));       // 磁带架（高，跳不上）
+  walls.push(aabbFromMesh(wb, 0.02));          // 白板
 
   // ========= 交互 =========
   function onClickDrawer() {
