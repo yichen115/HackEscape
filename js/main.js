@@ -1,5 +1,6 @@
 // 入口：注册引擎模块 + 各房间，启动游戏
 import { engine } from './engine.js';
+import './touch.js';           // 触屏输入（手机端自动激活；桌面端 no-op）
 import './controls.js';        // 启动 FPS 控制（副作用：绑事件 + addUpdate）
 import './interact.js';        // 启动 raycast 准星（副作用：addUpdate + 绑事件）
 

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Hack Escape · 黑客密室逃脱 v2</title>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -30,6 +30,22 @@
 
 <!-- 静音开关 -->
 <button id="mute-toggle" title="静音 / 开声 (M)">🔇</button>
+
+<!-- 触屏控件（手机端自动显示） -->
+<div id="touch-ui">
+  <div id="joystick">
+    <div class="joy-base"></div>
+    <div id="joystick-thumb" class="joy-thumb"></div>
+  </div>
+  <button id="jump-btn">JUMP</button>
+</div>
+
+<!-- 竖屏提示（手机端自动显示） -->
+<div id="rotate-hint">
+  <div class="icon">📱</div>
+  <div class="text">请把手机横过来玩<br><span style="font-size:14px;color:#9eb;">PLEASE ROTATE TO LANDSCAPE</span></div>
+  <div class="sub">游戏在横屏下显示完整界面</div>
+</div>
 
 <!-- 倒计时（房 4 用） -->
 <div id="countdown" class="hidden">

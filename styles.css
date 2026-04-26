@@ -97,7 +97,10 @@ html, body { width:100%; height:100%; overflow:hidden; background:#000; color:#7
 
 /* 通用模态 */
 .modal { position:fixed; inset:0; background:rgba(0,5,2,0.72); z-index:100;
-  display:none; align-items:center; justify-content:center; }
+  display:none; align-items:center; justify-content:center;
+  overflow-y:auto; padding:20px;          /* 内容超长时可滚 */
+  -webkit-overflow-scrolling:touch; }
+.modal .box { max-height:calc(100vh - 40px); overflow-y:auto; }
 .modal.show { display:flex; animation:fadeIn .3s ease-out; }
 .modal.show .box { animation:popIn .3s cubic-bezier(0.2, 0.8, 0.3, 1); }
 .modal.closing { animation:fadeOut .28s ease-in forwards; }
@@ -225,3 +228,111 @@ html, body { width:100%; height:100%; overflow:hidden; background:#000; color:#7
 @keyframes flk { 0%,97%,100%{opacity:1} 98%{opacity:0.4} 99%{opacity:0.85} }
 
 .hidden { display:none !important; }
+
+/* ============ 触屏控件 ============
+   桌面端默认隐藏；body.touch-mode 时展开；
+   保留中心准星 + 标签作为"瞄准提示"（让玩家知道当前对准的是什么）。
+   实际交互仍是直接 tap 物体。 */
+#touch-ui { display: none; }
+body.touch-mode #touch-ui     { display: block; }
+body.touch-mode #scene canvas { touch-action: none; }
+body.touch-mode               { touch-action: none; }
+/* 手机端隐藏 [E] 键提示（没键盘），只保留物体名 */
+body.touch-mode #reticle-label .key { display: none; }
+/* 标签上加一个"轻点交互"的提示后缀 */
+body.touch-mode #reticle-label.show::after {
+  content: ' · 点屏幕';
+  color: #9eb;
+  font-size: 11px;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+#joystick {
+  position: fixed;
+  left: 30px; bottom: 30px;
+  width: 130px; height: 130px;
+  pointer-events: none;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+#joystick.show { opacity: 1; }
+.joy-base {
+  position: absolute; inset: 0;
+  border: 2px solid rgba(110,255,180,0.55);
+  border-radius: 50%;
+  background: rgba(0,30,15,0.45);
+  box-shadow: 0 0 18px rgba(110,255,180,0.25), inset 0 0 18px rgba(0,40,20,0.4);
+}
+.joy-thumb {
+  position: absolute;
+  left: 35px; top: 35px;
+  width: 60px; height: 60px;
+  border: 2px solid #6effb4;
+  background: rgba(46,200,88,0.65);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(46,200,88,0.5);
+  pointer-events: none;
+  transition: transform 0.04s ease-out;
+}
+
+#jump-btn {
+  position: fixed;
+  right: 30px; bottom: 50px;
+  width: 90px; height: 90px;
+  border: 2px solid #6effb4;
+  background: rgba(46,200,88,0.4);
+  border-radius: 50%;
+  color: #c0ffd0;
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 4px;
+  z-index: 30;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 0 15px rgba(110,255,180,0.3);
+}
+#jump-btn.pressed,
+#jump-btn:active {
+  background: rgba(46,200,88,0.75);
+  transform: scale(0.94);
+}
+
+/* === 竖屏锁横屏提示（仅小屏幕生效）=== */
+#rotate-hint {
+  position:fixed; inset:0; z-index:9999;
+  background:#000;
+  display:none;
+  align-items:center; justify-content:center;
+  flex-direction:column;
+  color:#6effb4;
+  font-family:inherit;
+  text-align:center;
+  padding:40px;
+}
+#rotate-hint .icon { font-size:64px; margin-bottom:24px;
+  animation:rotPulse 2s infinite ease-in-out; }
+#rotate-hint .text { font-size:18px; letter-spacing:2px; line-height:1.6; }
+#rotate-hint .sub  { font-size:13px; color:#9eb; margin-top:14px; opacity:0.7; }
+@keyframes rotPulse { 0%,100%{transform:rotate(0)} 50%{transform:rotate(90deg)} }
+
+@media (orientation: portrait) and (max-width: 900px) {
+  body.touch-mode #rotate-hint { display:flex; }
+}
+
+/* === 小屏适配 === */
+@media (max-height: 480px) {
+  /* 横屏小屏：缩小触屏控件 */
+  #joystick { width:100px; height:100px; left:20px; bottom:20px; }
+  .joy-thumb { width:46px; height:46px; left:27px; top:27px; }
+  #jump-btn { width:72px; height:72px; right:20px; bottom:30px; font-size:13px; }
+  #hud { font-size:11px; }
+  #objective .task { font-size:13px; }
+  .modal .box { padding:14px 18px; }
+  .modal h2 { font-size:18px; margin-bottom:8px; }
+  .modal p { font-size:13px; margin-bottom:8px; }
+  #intro .title, #win .title, #lose .title { font-size:26px; margin-bottom:10px; }
+  #intro .start, #win .again, #lose .again { padding:8px 24px; font-size:16px; }
+}

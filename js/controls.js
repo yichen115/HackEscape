@@ -1,8 +1,10 @@
 /* global THREE */
 // FPS 第一人称控制器：Pointer Lock + WASD + 鼠标视角
+// 手机端：导入 touch.js 提供的虚拟摇杆作为 WASD 替代输入
 import { engine } from './engine.js';
 import { tryMove, groundYAt } from './collision.js';
 import { isAnyModalOpen } from './ui/modal.js';
+import { joystick, isTouch } from './touch.js';
 
 const SPEED = 3.5;
 const SPEED_RUN = 6.0;
@@ -16,8 +18,9 @@ let pointerLocked = false;
 
 const canvas = engine.renderer.domElement;
 
-// === Pointer Lock ===
+// === Pointer Lock (仅桌面端) ===
 canvas.addEventListener('click', () => {
+  if (isTouch()) return;                // 手机端不需要 pointer lock
   if (engine.player.paused) return;     // 模态打开时不锁
   if (isAnyModalOpen()) return;
   if (!pointerLocked) canvas.requestPointerLock();
@@ -89,17 +92,26 @@ engine.addUpdate((dt) => {
     }
   }
 
-  // --- 水平：WASD ---
+  // --- 水平：WASD 或 虚拟摇杆 ---
   let fwd = 0, str = 0;
-  if (keys.has('KeyW') || keys.has('ArrowUp'))    fwd += 1;
-  if (keys.has('KeyS') || keys.has('ArrowDown'))  fwd -= 1;
-  if (keys.has('KeyA') || keys.has('ArrowLeft'))  str -= 1;
-  if (keys.has('KeyD') || keys.has('ArrowRight')) str += 1;
-  if (fwd === 0 && str === 0) return;
+  if (joystick.active) {
+    // 摇杆模拟（推得越远走得越快）：上推 = 前进 (-y), 右推 = 右移 (+x)
+    fwd = -joystick.dy;
+    str =  joystick.dx;
+  } else {
+    if (keys.has('KeyW') || keys.has('ArrowUp'))    fwd += 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown'))  fwd -= 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft'))  str -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) str += 1;
+  }
+  const mag = Math.hypot(fwd, str);
+  if (mag < 0.05) return;
 
-  const len = Math.hypot(fwd, str); fwd /= len; str /= len;
+  // 摇杆保留量级（推 50% 走 50% 速度）；WASD 二值则归一
+  const scale = joystick.active ? Math.min(1, mag) : 1;
+  fwd /= mag; str /= mag;
   const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? SPEED_RUN : SPEED;
-  const step = speed * dt;
+  const step = speed * scale * dt;
 
   const yaw = engine.player.yaw;
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
