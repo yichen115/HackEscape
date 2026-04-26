@@ -71,7 +71,9 @@ export default function build() {
   wsBody.position.y = 0.85; ws.add(wsBody);
   const wsScreen = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.8),
     new THREE.MeshBasicMaterial({ color:0x000000 }));
-  wsScreen.position.set(0, 1.0, 0.36); wsScreen.rotation.x = -0.2; ws.add(wsScreen);
+  // z=0.45 (主机前面 0.35 + 浮空 0.1)，rotation -0.15 让后仰幅度变小
+  // 这样屏幕上半部不会因为后仰而插进主机箱体里
+  wsScreen.position.set(0, 1.0, 0.45); wsScreen.rotation.x = -0.15; ws.add(wsScreen);
   const wsScrFace = wsScreen;
   // 屏幕动态状态：先放 placeholder
   setWSScreen(wsScrFace, 'INSERT MEDIA');

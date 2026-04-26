@@ -51,9 +51,10 @@ export default function build() {
   wall(W, H, 0.2, 0, H/2, -D/2, '+z');
   wall(W, H, 0.2, 0, H/2,  D/2, '-z');
   wall(0.2, H, D, -W/2, H/2, 0, '+x');
-  wall(0.2, H, 2.5, W/2, H/2, -3.25, '-x');
-  wall(0.2, H, 2.5, W/2, H/2,  3.25, '-x');
-  wall(0.2, 1.8, 4,  W/2, H - 0.9, 0, '-x');
+  // 右墙分两段，门洞精确匹配门宽 (z=[-1.5, 1.5])
+  wall(0.2, H, 3.0, W/2, H/2, -3.0, '-x');  // 后段 z=[-4.5, -1.5]
+  wall(0.2, H, 3.0, W/2, H/2,  3.0, '-x');  // 前段 z=[+1.5, +4.5]
+  wall(0.2, 1.8, 3,  W/2, H - 0.9, 0, '-x');// 门楣，正好门宽
 
   // ========= 大木桌（朝向门口）=========
   const desk = new THREE.Group(); desk.position.set(-1.5, 0, -2.5); group.add(desk);
@@ -196,7 +197,8 @@ export default function build() {
   const pPic = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.92),
     new THREE.MeshBasicMaterial({ map: makePaintingTex(), toneMapped:false }));
   pPic.position.z = 0.03; painting.add(pPic);
-  painting.position.set(W/2 - 0.1, 2.6, 1.5); painting.rotation.y = -Math.PI/2;
+  // 挂在门右手边的前段实墙，靠近门 (z=3 中段)
+  painting.position.set(W/2 - 0.1, 2.6, 3.0); painting.rotation.y = -Math.PI/2;
   group.add(painting);
   pickables.push(pickable({ id:'r3_painting', mesh:painting, label:'灯塔油画', onClick: onClickPainting }));
 
@@ -211,7 +213,7 @@ export default function build() {
   const sHandle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.05),
     new THREE.MeshStandardMaterial({ color:0xb0b0b0, metalness:0.8 }));
   sHandle.position.set(-0.06, -0.25, 0.2); safe.add(sHandle);
-  safe.position.set(W/2 - 0.1, 2.6, 1.5); safe.rotation.y = -Math.PI/2;
+  safe.position.set(W/2 - 0.1, 2.6, 3.0); safe.rotation.y = -Math.PI/2;
   safe.visible = false; group.add(safe);
   pickables.push(pickable({ id:'r3_safe', mesh:safe, label:'墙内保险箱', onClick: onClickSafe }));
 
@@ -220,7 +222,7 @@ export default function build() {
   const suB = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.22), M.usbCap);
   const suH = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.13), M.usbMet);
   suH.position.z = 0.16; safeUsb.add(suB); safeUsb.add(suH);
-  safeUsb.position.set(W/2 - 0.25, 2.55, 1.55); safeUsb.visible = false; group.add(safeUsb);
+  safeUsb.position.set(W/2 - 0.25, 2.55, 3.05); safeUsb.visible = false; group.add(safeUsb);
   pickables.push(pickable({ id:'r3_safe_usb', mesh:safeUsb, label:'OBELISK USB', onClick: () => {
     if (!F.safeOpen || F.usbTaken) return;
     SFX.pickup();
@@ -233,7 +235,7 @@ export default function build() {
 
   const safeNote = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.005, 0.18),
     new THREE.MeshStandardMaterial({ color:0xfaf2c0 }));
-  safeNote.position.set(W/2 - 0.25, 2.55, 1.7); safeNote.visible = false; group.add(safeNote);
+  safeNote.position.set(W/2 - 0.25, 2.55, 3.2); safeNote.visible = false; group.add(safeNote);
   pickables.push(pickable({ id:'r3_safe_note', mesh:safeNote, label:'保险箱里的便条', onClick: () => {
     if (!F.safeOpen) return;
     SFX.paperRustle();
@@ -272,13 +274,13 @@ export default function build() {
     new THREE.MeshBasicMaterial({ color:0x9effb7 }));
   bdGlow.position.x = -0.03; bdGlow.rotation.y = -Math.PI/2;
   backToR2.add(bdGlow);
-  backToR2.position.set(W/2 - 0.15, 2.4, -3);
+  backToR2.position.set(W/2 - 0.15, 2.4, -2.5);
   group.add(backToR2);
   pickables.push(pickable({ id:'r3_back', mesh:backToR2, label:'下 6F · 监控室',
     onClick: () => engine.goto(1)
   }));
 
-  // 旁边有一个键盘
+  // 门禁键盘 —— 作为门的子物体，跟门一起转动；嵌在门内侧（智能锁式）
   const keyPad3 = new THREE.Group();
   const kpBg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.08),
     new THREE.MeshStandardMaterial({ color:0x222831 }));
@@ -288,9 +290,10 @@ export default function build() {
       new THREE.MeshStandardMaterial({ color:0x11161c }));
     b.position.set(-0.2 + c*0.2, 0.05 - r*0.14, 0.045); keyPad3.add(b);
   }
+  // 装在门内侧把手附近（玩家面门时左手边、胸口高度）
   keyPad3.rotation.y = -Math.PI/2;
-  keyPad3.position.set(W/2 - 0.06, 2.2, -1);
-  group.add(keyPad3);
+  keyPad3.position.set(-0.06, 1.5, -2.2);
+  door.add(keyPad3);    // ← 子物体，跟着门动
   pickables.push(pickable({ id:'r3_doorpad', mesh:keyPad3, label:'门禁键盘', onClick: onClickExit }));
 
   // ========= 灯光 =========
