@@ -1,7 +1,11 @@
 /* global THREE */
 // 房间 1: 服务器机房 (B3)
 import { engine } from '../engine.js';
+import { dressRoom } from '../scenery.js';
 import { M, emissive } from '../materials.js';
+import { contactTexture } from '../surfaces.js';
+import { discoverEgg } from '../easter-eggs.js';
+import { addCupBottomMark } from '../easter-props.js';
 import { aabb, aabb3, aabbFromMesh } from '../collision.js';
 import { pickable } from '../interact.js';
 import { makeMonitorTex, makePhotoTex, makeCalendarTex, makeWhiteboardTex } from '../tex.js';
@@ -29,6 +33,7 @@ export default function build() {
   // 状态
   const F = {
     lamp:false, coffeeMoved:false, stickyRead:false,
+    hiddenListed:false, handoverHint:false, sandwichHint:false,
     cabOpened:false, usbTaken:false,
     usbInserted:false, loggedIn:false, clueRead:false,
     leaving:false,
@@ -75,7 +80,9 @@ export default function build() {
   // ========= 桌子 / 显示器 / 键盘 / 咖啡杯 / 便签 / PC / 台灯 =========
   const desk = new THREE.Group(); desk.position.set(-2.2, 0, -4.4); room.add(desk);
   const dTop = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.12, 1.8), M.desk);
+  dTop.name = 'server-desk-top';
   dTop.position.y = 1.05; desk.add(dTop);
+  const deskSurfaceY = desk.position.y + dTop.position.y + dTop.geometry.parameters.height / 2;
   for (const [dx,dz] of [[-1.9,-0.75],[1.9,-0.75],[-1.9,0.75],[1.9,0.75]]) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.05, 0.12), M.desk);
     leg.position.set(dx, 0.52, dz); desk.add(leg);
@@ -118,9 +125,11 @@ export default function build() {
     room.add(k);
   }
 
-  // 咖啡杯
+  // 便签初始隐藏，杯子直接落在可见桌面上。
+  const stickyThickness = 0.0006;
   const cup = new THREE.Group();
   const cupBody = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.28, 16), M.cup);
+  cupBody.name = 'coffee-cup-body';
   cupBody.position.y = 0.14; cup.add(cupBody);
   const cupLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.03, 16), M.coffee);
   cupLiq.position.y = 0.27; cup.add(cupLiq);
@@ -129,26 +138,40 @@ export default function build() {
   cupHandle.position.set(0.14, 0.14, 0);
   cupHandle.rotation.z = -Math.PI / 2;
   cup.add(cupHandle);
-  cup.position.set(-1.5, 1.21, -4.3); room.add(cup);
+  // 开灯前也保留贴地的柔和阴影，随杯子一起移动。
+  const cupContact = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.36),
+    new THREE.MeshBasicMaterial({ map:contactTexture(), transparent:true, depthWrite:false, opacity:0.65, toneMapped:false }));
+  cupContact.name = 'cup-contact-shadow';
+  cupContact.rotation.x = -Math.PI / 2;
+  cupContact.position.y = 0.0002;
+  cupContact.raycast = () => {}; // 阴影不扩大杯子的交互范围。
+  cup.add(cupContact);
+  addCupBottomMark(cup);
+  cup.position.set(-1.5, deskSurfaceY, -4.3); room.add(cup);
   pickables.push(pickable({ id:'r1_cup', mesh:cup, label:'咖啡杯', onClick: onClickCup }));
 
   // 便签（藏在咖啡杯下，初始不可见）
-  const sticky = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.01, 0.35), M.yellow);
-  sticky.position.set(-1.5, 1.20, -4.3); sticky.visible = false; room.add(sticky);
+  const stickyMaterial = M.paper.clone();
+  stickyMaterial.color.setHex(0xf5e97c);
+  const sticky = new THREE.Mesh(new THREE.BoxGeometry(0.35, stickyThickness, 0.35), stickyMaterial);
+  sticky.position.set(-1.5, deskSurfaceY + stickyThickness / 2, -4.3); sticky.visible = false; room.add(sticky);
   pickables.push(pickable({ id:'r1_sticky', mesh:sticky, label:'便签', onClick: onClickSticky }));
 
   // 台灯
   const lamp = new THREE.Group();
   const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.08, 12), M.metal);
+  lampBase.name = 'desk-lamp-base';
   lampBase.position.y = 0.04; lamp.add(lampBase);
   const lampArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.7, 8), M.metal);
   lampArm.position.y = 0.4; lamp.add(lampArm);
   const lampArm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.5, 8), M.metal);
-  lampArm2.position.set(0.2, 0.78, 0); lampArm2.rotation.z = Math.PI/3; lamp.add(lampArm2);
+  lampArm2.position.set(0.2, 0.78, 0); lampArm2.rotation.z = -Math.PI/3; lamp.add(lampArm2);
   const lampShade = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.24, 12, 1, true),
     new THREE.MeshStandardMaterial({ color:0xaa8555, side:THREE.DoubleSide }));
-  lampShade.position.set(0.42, 0.94, 0); lampShade.rotation.z = -Math.PI/2 + 0.3; lamp.add(lampShade);
-  lamp.position.set(-3.2, 1.11, -4.8); room.add(lamp);
+  lampShade.position.set(0.42, 0.94, 0); lamp.add(lampShade);
+  // 放在显示器左侧的空桌面，灯臂朝向桌前，便于看到并操作。
+  lamp.position.set(-3.95, deskSurfaceY, -4.25);
+  lamp.rotation.y = -Math.PI / 2; room.add(lamp);
   pickables.push(pickable({ id:'r1_lamp', mesh:lamp, label:'台灯 (关闭)', onClick: onClickLamp }));
 
   // 灯光（属于 group，不属于 scene；group remove 时会一起卸载）
@@ -161,25 +184,50 @@ export default function build() {
   const keyLight = new THREE.DirectionalLight(0x88b0ff, 0.4);
   keyLight.position.set(-6, 8, 6); room.add(keyLight);
 
-  // ========= 档案柜 =========
+  // ========= 档案柜：固定柜壳 + 可拉出的下层抽屉 =========
   const cab = new THREE.Group(); cab.position.set(-7, 0, -3); room.add(cab);
-  const cabBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.4, 1.4), M.metal);
-  cabBody.position.y = 1.7; cab.add(cabBody);
-  const cabDrawer = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.9, 0.06), M.metal);
-  cabDrawer.position.set(0, 2.4, 0.72); cab.add(cabDrawer);
-  const cabDrawer2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.9, 0.06), M.metal);
-  cabDrawer2.position.set(0, 1.0, 0.72); cab.add(cabDrawer2);
-  const cabLock = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 12),
+  cab.name = 'server-filing-cabinet';
+  function cabinetPart(parent, name, size, position, material=M.metal) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+    mesh.name = name; mesh.position.set(...position); parent.add(mesh); return mesh;
+  }
+  const cabHousing = new THREE.Group(); cabHousing.name = 'cabinet-fixed-housing'; cab.add(cabHousing);
+  // 柜体落在地砖上；空腔由板件围成，打开时不会露出实心方块。
+  cabinetPart(cabHousing, 'cabinet-plinth', [1.2,0.08,1.4], [0,0.06,0]);
+  cabinetPart(cabHousing, 'cabinet-top', [1.2,0.06,1.4], [0,3.37,0]);
+  for (const x of [-0.57,0.57]) cabinetPart(cabHousing, 'cabinet-side', [0.06,3.24,1.4], [x,1.72,0]);
+  cabinetPart(cabHousing, 'cabinet-back', [1.08,3.24,0.06], [0,1.72,-0.67]);
+  cabinetPart(cabHousing, 'cabinet-base-front', [1.08,0.59,0.06], [0,0.395,0.7]);
+  cabinetPart(cabHousing, 'cabinet-divider', [1.08,0.06,1.28], [0,1.31,0]);
+  cabinetPart(cabHousing, 'cabinet-drawer-top-trim', [1.08,0.15,0.06], [0,1.205,0.7]);
+  cabinetPart(cabHousing, 'cabinet-upper-door', [1.06,1.96,0.06], [0,2.35,0.72]);
+  cabinetPart(cabHousing, 'cabinet-upper-handle', [0.32,0.04,0.05], [0,2.4,0.78], M.metalDark);
+
+  const cabDrawer = new THREE.Group(); cabDrawer.name = 'cabinet-lower-drawer';
+  cabDrawer.position.set(0,0.95,0); cab.add(cabDrawer);
+  cabinetPart(cabDrawer, 'cabinet-drawer-front', [1.06,0.42,0.06], [0,-0.04,0.72]);
+  const cabDrawerBottom = cabinetPart(cabDrawer, 'cabinet-drawer-bottom', [0.98,0.04,1.16], [0,-0.22,0.1], M.metalDark);
+  for (const x of [-0.475,0.475]) {
+    cabinetPart(cabDrawer, 'cabinet-drawer-side', [0.03,0.32,1.16], [x,-0.04,0.1]);
+    cabinetPart(cabHousing, 'cabinet-fixed-rail', [0.024,0.05,1.12], [Math.sign(x)*0.515,0.86,0.06], M.metalDark);
+    cabinetPart(cabDrawer, 'cabinet-sliding-rail', [0.018,0.045,1.1], [Math.sign(x)*0.5,-0.09,0.08]);
+  }
+  cabinetPart(cabDrawer, 'cabinet-drawer-back', [0.92,0.32,0.03], [0,-0.04,-0.465]);
+  for (const x of [-0.16,0.16]) cabinetPart(cabDrawer, 'cabinet-handle-mount', [0.035,0.045,0.075], [x,0.1,0.78], M.metalDark);
+  cabinetPart(cabDrawer, 'cabinet-drawer-handle', [0.36,0.04,0.04], [0,0.1,0.825], M.metalDark);
+  const cabLock = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.025,12),
     new THREE.MeshStandardMaterial({ color:0xffd050, metalness:0.8 }));
-  cabLock.rotation.x = Math.PI/2; cabLock.position.set(0, 2.4, 0.78); cab.add(cabLock);
+  cabLock.rotation.x = Math.PI/2; cabLock.position.set(0.37,0.1,0.768); cabDrawer.add(cabLock);
+  cab.userData.drawer = cabDrawer; cab.userData.fixedHousing = cabHousing;
   pickables.push(pickable({ id:'r1_cabinet', mesh:cab, label:'档案柜 (上锁)', onClick: onClickCabinet }));
 
-  // 档案柜内 USB（隐藏）
+  // USB 真正放在抽屉底板上，跟随整个抽屉移动。
   const usb = new THREE.Group();
-  const usbBody = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.3), M.usbCap);
-  const usbHead = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.18), M.usbMet);
+  const usbBody = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.05,0.3), M.usbCap);
+  const usbHead = new THREE.Mesh(new THREE.BoxGeometry(0.08,0.04,0.18), M.usbMet);
   usbHead.position.z = 0.22; usb.add(usbBody); usb.add(usbHead);
-  usb.position.set(-7, 2.45, -2.3); usb.visible = false; room.add(usb);
+  const drawerFloorY = cabDrawerBottom.position.y + cabDrawerBottom.geometry.parameters.height / 2;
+  usb.position.set(0,drawerFloorY + 0.025,0.25); usb.visible = false; cabDrawer.add(usb);
   pickables.push(pickable({ id:'r1_usb', mesh:usb, label:'USB 闪存盘', onClick: onClickUsb }));
 
   // ========= 左墙的照片 / 日历 =========
@@ -349,7 +397,9 @@ export default function build() {
   walls.push(aabbFromMesh(desk, 0.02));     // 办公桌 (顶 1.11m，可跳上)
   walls.push(aabbFromMesh(pcTower, 0.02));  // 主机 (顶 1.1m，可跳上)
   walls.push(aabbFromMesh(monitor, 0.02));  // 显示器
-  walls.push(aabbFromMesh(cab, 0.02));      // 档案柜 (顶 3.4m，挡住但跳不上)
+  walls.push(aabbFromMesh(cab, 0.02));      // 固定柜体 (顶 3.4m)
+  const cabDrawerCollision = aabbFromMesh(cabDrawer, 0.02);
+  cabDrawerCollision.disabled = true; walls.push(cabDrawerCollision);
   rackGroups.forEach(r => walls.push(aabbFromMesh(r, 0.02)));
 
   // ========= 帧动画（警示灯脉动 + LED 闪烁 + 警报） =========
@@ -382,11 +432,15 @@ export default function build() {
       SFX.click();
       cup.position.x = -0.7;
       sticky.visible = true;
+      engine.renderer.shadowMap.needsUpdate = true;
       F.coffeeMoved = true;
       pickables.find(p => p.id === 'r1_cup').label = '咖啡杯 (已移开)';
-      engine.showHint('键盘角落下压着一张便签。');
+      engine.showHint('杯子下面露出一张便签。杯底似乎也印着什么。');
       advance();
-    } else engine.showHint('只是杯凉掉的咖啡。');
+    } else {
+      SFX.click(); discoverEgg('teapot');
+      openViewer('<div class="egg-document"><h3>杯底的刻字</h3><div class="cup-bottom-stamp"><b>418</b><span>I’M A TEAPOT</span></div><p>你翻过杯子，看见底部一行小字。</p><p>装着咖啡，却坚持自己是茶壶。</p><p style="font-size:13px;margin-top:12px;">已记入探索记录 · 关闭后按 J 查看</p></div>');
+    }
   }
 
   function onClickSticky() {
@@ -423,9 +477,11 @@ export default function build() {
         SFX.doorUnlock();
         SFX.drawerSlide();
         pickables.find(p => p.id === 'r1_cabinet').label = '档案柜 (已开)';
-        cabDrawer.position.z = 1.1;
+        cabDrawer.position.z = 0.75;
+        Object.assign(cabDrawerCollision, aabbFromMesh(cabDrawer, 0.02), { disabled:false });
         usb.visible = true;
-        engine.showHint('档案柜 "咔嗒" 一声开了。里面有个 USB。');
+        engine.renderer.shadowMap.needsUpdate = true;
+        engine.showHint('下层抽屉弹开了，底板上放着一个 USB。');
         advance();
       }
     });
@@ -470,12 +526,31 @@ export default function build() {
 
   function openR1Terminal() {
     const FS = {
-      'readme.txt': 'MERIDIAN 红队实验台 — 用完请退出 admin 账户。',
-      'clue.txt'  : '[ENCRYPTED BY bossware v0.3 — 需要 decryptor.bin]',
+      'readme.txt': 'MERIDIAN 红队实验台 — 用完请退出 admin 账户。\n\n交接记录以点开头，普通目录列表里看不到。\n忘了怎么找？查一下 help ls。',
+      'clue.txt': '[ENCRYPTED BY bossware v0.3 — 需要 decryptor.bin]',
       'decryptor.bin': '<binary>',
+      'handover.txt': 'NIGHT SHIFT / 夜班交接备忘录\n\n1. 不要把口令写在便签上。\n2. 宵夜请自己解决，值班预算已经用完。\n3. 上一位管理员至今没有退出这个编辑器。\n\n想继续逃出大楼，就先想办法退出 Vim。',
+      '.maintenance': 'FLAG{trust_no_one_but_your_logs}\n\n夜班交接备忘录在 handover.txt。\n上一位管理员习惯用 vim handover.txt 看它。',
+      '.bash_history': 'make me a sandwich\n# 权限不够的话，你知道该加什么。\n# 忘了？试试在前面加 sudo。',
     };
+    function fileSeen(name) {
+      if(name==='.maintenance') {discoverEgg('flag');F.handoverHint=true;}
+      if(name==='handover.txt') F.handoverHint=true;
+      if(name==='.bash_history') F.sandwichHint=true;
+    }
     openTerminal({
       promptHead: 'root@meridian-07:~#',
+      visibleCommands: ['help','ls','cat','whoami','pwd','decrypt','clear','exit'],
+      complete: tokens => {
+        if(tokens.length===1) return ['help','ls','cat','whoami','pwd','decrypt','clear','exit',...(F.handoverHint?['vim']:[]),...(F.sandwichHint?['make','sudo']:[])];
+        if(tokens[0]==='ls') return ['-a'];
+        if(tokens[0]==='help') return ['ls','cat','vim'];
+        if(tokens[0]==='decrypt') return ['clue.txt'];
+        if(tokens[0]==='cat'||tokens[0]==='vim') return Object.keys(FS).filter(name=>!name.startsWith('.')||F.hiddenListed||tokens[tokens.length-1].startsWith('.'));
+        if(tokens[0]==='sudo'&&F.sandwichHint) return ['make me a sandwich'];
+        if(tokens[0]==='make'&&F.sandwichHint) return ['me a sandwich'];
+        return [];
+      },
       init: [
         'Meridian Linux 5.19.0-meri · tty0',
         'Last login from 10.44.2.9 at 01:32:07',
@@ -485,16 +560,43 @@ export default function build() {
         '',
       ],
       commands: {
-        help: (_, t) => t.print('可用命令: ls, cat <file>, whoami, pwd, decrypt <file>, clear, exit'),
-        ls:   (_, t) => t.print(Object.keys(FS).join('   ')),
+        help: (a, t) => {
+          if(a[0]==='ls') return t.print('ls [-a]\n  -a  显示所有文件，包括名称以 . 开头的隐藏文件。');
+          if(a[0]==='cat') return t.print('cat <file>  读取文件；可用 Tab 补全文件名。');
+          if(a[0]==='vim') return t.print('vim <file>  查看只读交接文件；用 :q! 或 Esc 返回终端。');
+          t.print('可用命令: ls, cat <file>, whoami, pwd, decrypt <file>, clear, exit'+(F.handoverHint?', vim <file>':''));
+          t.print('help ls 查看目录参数 · Tab 补全 · ↑ / ↓ 历史');
+        },
+        ls: (a, t) => {
+          const all=a.includes('-a')||a.includes('-la')||a.includes('-al');
+          if(a.length&&!all) return t.print('用法: ls [-a]；输入 help ls 查看参数。');
+          if(all) F.hiddenListed=true;
+          t.print(Object.keys(FS).filter(name=>all||!name.startsWith('.')).join('   '));
+        },
         pwd:  (_, t) => t.print('/home/admin'),
         whoami: (_, t) => t.print('admin  (uid=1000, group=ops, trusted=FALSE)'),
         cat:  (a, t) => {
           const f = a[0];
           if (!f) return t.print('用法: cat <file>');
-          if (FS[f] === undefined) return t.print('cat: ' + f + ': 没有那个文件');
-          t.print(FS[f]);
+          if (!Object.prototype.hasOwnProperty.call(FS,f)) return t.print('cat: ' + f + ': 没有那个文件');
+          t.print(FS[f]); fileSeen(f);
           if (f === 'clue.txt' && !F.clueRead) t.print('>>> 试试: decrypt clue.txt');
+        },
+        vim: (a, t) => {
+          const name=a[0];
+          if(!name) return t.print('用法: vim <file>');
+          if(!Object.prototype.hasOwnProperty.call(FS,name)) return t.print('vim: '+name+': 没有那个文件');
+          fileSeen(name);
+          t.openEditor({name,text:FS[name],onExit:()=>discoverEgg('vim')});
+        },
+        make: (a, t) => {
+          if(a.join(' ')!=='me a sandwich') return t.print('make: 没有可用的构建目标。');
+          F.sandwichHint=true; t.print('Permission denied.\n提示：试试在前面加 sudo。');
+        },
+        sudo: (a, t) => {
+          if(a.join(' ')!=='make me a sandwich') return t.print('sudo: command not found: '+(a[0]||''));
+          discoverEgg('sandwich');
+          t.print('   _________\n  /________/|\n |  ====== |/\n |_________|\n\n权限足够了。宵夜也到位了。');
         },
         decrypt: (a, t) => {
           if (a[0] !== 'clue.txt') return t.print('decrypt: 只识别 clue.txt');
@@ -562,6 +664,8 @@ export default function build() {
     if (!F.leaving)     return engine.setObjective('清点机柜红灯，输入门禁密码逃脱。');
     return engine.setObjective('门开了。穿过去。');
   }
+
+  dressRoom(group, { kind:'server',W:16,D:12,H:6,pickables,shadowLight:deskLight });
 
   return {
     id: 'room1',

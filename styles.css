@@ -336,3 +336,70 @@ body.touch-mode #reticle-label.show::after {
   #intro .title, #win .title, #lose .title { font-size:26px; margin-bottom:10px; }
   #intro .start, #win .again, #lose .again { padding:8px 24px; font-size:16px; }
 }
+
+
+/* 视觉精修：轻量 HUD 和更克制的 CRT 叠层。交互布局与规则不变。 */
+.scan::after { opacity:.23; }
+.vignette::before { background:radial-gradient(ellipse at center,transparent 48%,rgba(0,5,10,.46) 100%); }
+#hud { top:22px;left:24px;right:24px;gap:20px; }
+.panel { background:linear-gradient(135deg,rgba(10,19,25,.85),rgba(8,15,20,.62));border:1px solid rgba(130,166,180,.2);border-top-color:rgba(146,194,203,.4);box-shadow:0 8px 24px rgba(0,0,0,.15);backdrop-filter:blur(10px);padding:13px 17px; }
+#objective { max-width:330px; }
+#objective .title,#inventory .title { font-size:10px;letter-spacing:3px;color:#7ea3af; }
+#objective .task { color:#d1dce0;font-family:'Share Tech Mono','Microsoft YaHei',monospace;font-size:13px;line-height:1.7;margin-top:7px; }
+#room-tag { padding:11px 18px; }
+#room-tag-text { font-size:12px;color:#a9c8d0;letter-spacing:3px; }
+#inventory { min-width:170px; }
+.inv-empty { color:#687e87; }.inv-item { color:#bacfd5;border-bottom-color:rgba(128,157,170,.17); }
+#quality-toggle { position:fixed;bottom:23px;left:24px;z-index:30;border:1px solid rgba(141,182,197,.25);background:rgba(10,20,27,.8);color:#aac2cc;font:11px 'Share Tech Mono','Microsoft YaHei',monospace;letter-spacing:1px;padding:9px 13px;cursor:pointer;backdrop-filter:blur(8px); }
+#quality-toggle:hover { background:#172b35;color:#e3edf0;border-color:#7198a7; }
+#mute-toggle { bottom:23px;right:24px;background:rgba(10,20,27,.8);border-color:rgba(141,182,197,.25);font-size:16px; }
+#crosshair { width:12px;height:12px;opacity:.8; }
+#crosshair .bar { background:rgba(218,235,237,.72); }
+#reticle-label { border-color:rgba(152,201,209,.45);background:rgba(9,20,27,.9);color:#d1e5e9;padding:7px 12px; }
+.rb-floor { color:#7eaebd;font-size:11px;letter-spacing:7px; }
+.rb-name { font-family:'Microsoft YaHei',sans-serif;font-size:32px;font-weight:300;color:#e1eced;text-shadow:0 2px 24px rgba(0,0,0,.8); }
+.rb-desc { font-size:12px;color:#99abb4; }
+#intro { background:radial-gradient(ellipse at 80% 20%,rgba(41,71,84,.5),transparent 55%),linear-gradient(135deg,#070e13,#111c24); }
+#intro .box { background:linear-gradient(145deg,rgba(21,35,43,.93),rgba(8,17,23,.96));border-color:#3a5663;box-shadow:0 30px 100px #0008;padding:32px 36px; }
+#intro .title { color:#d2e9ec;letter-spacing:7px;text-shadow:none;font-size:36px;border-bottom:1px solid #34454e;padding-bottom:18px; }
+#intro p { color:#b1c4ca;line-height:1.85;font-size:14px; }
+#intro .start { background:#b6d6d9;border:none;color:#13232d;font-size:16px;letter-spacing:5px;padding:13px 38px; }
+#intro .start:hover { background:#d3eaec;box-shadow:0 0 30px #7faeb433; }
+.modal .box { border-color:#456a71;background:linear-gradient(140deg,#111e23,#07110e);box-shadow:0 18px 80px #0009; }
+#hint { background:rgba(11,23,28,.9);border-color:#42616a;color:#c8dedf; }
+@media (max-width:850px) { #hud { top:12px;left:12px;right:12px;gap:10px; } #objective { max-width:245px; } #inventory { min-width:130px; } .panel { padding:10px 12px; } #room-tag-text { letter-spacing:1px; } }
+@media (max-height:600px) { #intro .box { padding:18px 26px; } #intro .title { font-size:26px;margin-bottom:10px;padding-bottom:10px; } #intro p { font-size:12px;line-height:1.5;margin-bottom:8px; } }
+body.touch-mode #quality-toggle { left:12px;bottom:12px; }
+
+/* 已发现的探索记录与模拟编辑器 */
+#exploration-toggle { position:fixed; bottom:14px; right:78px; z-index:30; padding:9px 12px;
+  background:rgba(0,12,6,.86); border:1px solid #284b3d; color:#b9d1c5; font:13px monospace; cursor:pointer; }
+#exploration-toggle[hidden] { display:none; }
+#exploration-toggle.unread { border-color:#6cba92; color:#baffd7; }
+.exploration-notebook { width:520px; max-width:calc(100vw - 40px); max-height:calc(100vh - 96px); overflow-y:auto;
+  color:#cddbd4; padding:22px 24px; background:#081712; border:1px solid #345344; }
+.exploration-notebook .eyebrow, .exploration-room { color:#81a58e; font:12px monospace; letter-spacing:1px; }
+.exploration-notebook h2 { font-size:24px; color:#d9eedf; margin:8px 0; }
+.exploration-intro { color:#95a99d; margin-bottom:20px; line-height:1.6; }
+.exploration-notebook article { padding:14px 0; border-top:1px solid #294239; }
+.exploration-notebook h3 { font-size:17px; margin:6px 0; }
+.exploration-notebook p { line-height:1.7; overflow-wrap:anywhere; }
+.exploration-empty { padding:20px 0; color:#91a69a; }
+.egg-document { width:480px; max-width:calc(100vw - 40px); max-height:calc(100vh - 80px); overflow-y:auto; padding:20px; background:#e4ddc3; color:#303b3b; line-height:1.85; }
+.egg-document h3 { font-size:22px; margin-bottom:14px; }
+.egg-document .stamp { display:inline-block; margin-bottom:12px; border:2px solid #437259; padding:2px 9px; letter-spacing:2px; }
+.cup-bottom-stamp { margin:18px auto; width:175px; height:175px; border:5px double #50636b; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; flex-direction:column; background:#e8e8ea; color:#2c3940; font-family:monospace; }
+.cup-bottom-stamp b { font-size:54px; line-height:1.15; }
+.cup-bottom-stamp span { font-size:15px; }
+#term-out { min-height:0; }
+#term-tools { padding:5px 12px; border-top:1px solid #163a27; color:#80a88b; font:12px monospace; }
+#term-box[data-mode="vim"] #term-out { background:#081416; color:#d2e4dd; font-family:monospace; }
+#term-box[data-mode="vim"] #term-tools { background:#183342; color:#d4ece4; }
+
+.egg-document p, .egg-document h3 { color:#303b3b; }
+.exploration-notebook .exploration-intro, .exploration-notebook .exploration-empty { color:#95a99d; }
+.exploration-end { display:block; margin:12px auto; padding:8px 16px; background:#0b1c15; border:1px solid #456a58; color:#c4e5d0; font:14px monospace; cursor:pointer; }
+.exploration-end[hidden] { display:none; }
+
+#term-box { max-height:calc(100vh - 40px); }

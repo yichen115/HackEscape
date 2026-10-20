@@ -1,6 +1,9 @@
 /* global THREE */
 // 房间 2: 监控室 (6F)
 import { engine } from '../engine.js';
+import { dressRoom } from '../scenery.js';
+import { discoverEgg } from '../easter-eggs.js';
+import { paperPlaque } from '../easter-props.js';
 import { M } from '../materials.js';
 import { aabb, aabbFromMesh } from '../collision.js';
 import { pickable } from '../interact.js';
@@ -66,10 +69,10 @@ export default function build() {
     const x = -3 + c * 2;
     const y = 3.6 - r * 1.0;
     const back = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.95, 0.06), M.black);
-    back.position.set(x, y, -D/2 + 0.05); group.add(back);
+    back.position.set(x, y, -D/2 + 0.08); group.add(back);
     const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 0.85),
       new THREE.MeshBasicMaterial({ map: makeCCTVTex(camNames[idx]), toneMapped:false }));
-    scr.position.set(x, y, -D/2 + 0.09); group.add(scr);
+    scr.position.set(x, y, -D/2 + 0.12); group.add(scr);
   }
 
   // ========= 主控台（在房间中央，朝摄像头墙）=========
@@ -258,6 +261,15 @@ export default function build() {
         <p style="color:#666; font-size:14px; margin-top:10px;">— L. Foreman, 夜班 Sec Op</p>
       </div>`);
     advance();
+  }}));
+
+  // 白板下的一份已结案工单，不属于录像证据。
+  const dnsTicket=paperPlaque('SERVICE DESK / CLOSED',['NETWORK / ARCHIVED','夜班维修记录']);
+  dnsTicket.name='dns-service-ticket'; dnsTicket.position.set(-W/2+.11,1.35,.4);
+  dnsTicket.rotation.y=Math.PI/2; group.add(dnsTicket);
+  pickables.push(pickable({id:'r2_dns_ticket',mesh:dnsTicket,label:'已结案工单',onClick:()=>{
+    SFX.paperRustle(); discoverEgg('dns');
+    openViewer('<div class="egg-document"><span class="stamp">CLOSED</span><h3>夜班网络故障工单</h3><p><b>报告：</b>监控掉线，疑似入侵。</p><p><b>排查：</b>抓包、查防火墙、查交换机，耗时三小时。</p><p><b>结案：</b><code>Root cause: DNS. Again.</code></p><hr style="margin:14px 0;"><p>这次的入侵是真的，别再重启路由器了。</p><p style="font-size:13px;">— 夜班 Sec Op</p></div>');
   }}));
 
   // ========= 磁带架（暗处，需手电）=========
@@ -538,6 +550,8 @@ export default function build() {
     if (!F.floor7Unlocked) return engine.setObjective('回主控台终端 — 用 unlock + 内鬼员工号。');
     if (!F.leaving)        return engine.setObjective('上楼，到 7F 主管办公室。');
   }
+
+  dressRoom(group, { kind:'monitor',W,D,H,pickables,shadowLight:ceilLight });
 
   return {
     id: 'room2',

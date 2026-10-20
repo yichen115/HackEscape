@@ -4,7 +4,9 @@ export function makeScreenTexture(draw, w=512, h=384) {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   const ctx = cv.getContext('2d'); draw(ctx, cv);
   const tx = new THREE.CanvasTexture(cv);
-  tx.magFilter = THREE.NearestFilter;
+  tx.encoding = THREE.sRGBEncoding;
+  tx.magFilter = THREE.LinearFilter;
+  tx.anisotropy = 4;
   tx.needsUpdate = true;
   return tx;
 }
@@ -14,9 +16,9 @@ export function makeMonitorTex(state) {
   return makeScreenTexture((c, cv) => {
     c.fillStyle = '#000'; c.fillRect(0,0,cv.width,cv.height);
     if (state === 'locked') {
-      c.fillStyle = '#222'; c.font = 'bold 26px monospace';
+      c.fillStyle = '#748b94'; c.font = 'bold 26px monospace';
       c.fillText('NO BOOT DEVICE', 140, 180);
-      c.font = '16px monospace'; c.fillStyle = '#444';
+      c.font = '16px monospace'; c.fillStyle = '#50646d';
       c.fillText('Please insert bootable media.', 130, 210);
     } else if (state === 'login') {
       c.fillStyle = '#0f1e14'; c.fillRect(0,0,cv.width,cv.height);
@@ -113,9 +115,9 @@ export function makeCCTVTex(label) {
     c.fillStyle = '#020608'; c.fillRect(0,0,cv.width,cv.height);
     c.strokeStyle = '#0a1a18'; c.lineWidth = 2;
     for (let i=0;i<8;i++) c.strokeRect(0+i*12,0+i*9,cv.width-i*24,cv.height-i*18);
-    c.fillStyle = '#0a3a28'; c.font = '14px monospace';
+    c.fillStyle = '#567a78'; c.font = '14px monospace';
     c.fillText(label || 'CAM-XX', 16, 24);
-    c.fillStyle = '#1a4a32'; c.font = '12px monospace';
+    c.fillStyle = '#49635e'; c.font = '12px monospace';
     c.fillText('NO SIGNAL', cv.width/2 - 50, cv.height/2);
     c.fillStyle = '#ff3030'; c.beginPath(); c.arc(cv.width-20, 20, 4, 0, Math.PI*2); c.fill();
     c.fillStyle = '#aa2020'; c.font = '11px monospace';
@@ -128,9 +130,9 @@ export function makeConsoleTex(state) {
   return makeScreenTexture((c, cv) => {
     c.fillStyle = '#000'; c.fillRect(0,0,cv.width,cv.height);
     if (state === 'locked') {
-      c.fillStyle = '#444'; c.font = 'bold 24px monospace';
+      c.fillStyle = '#81989e'; c.font = 'bold 24px monospace';
       c.fillText('SECURITY CONSOLE · LOCKED', 90, 150);
-      c.fillStyle = '#666'; c.font = '14px monospace';
+      c.fillStyle = '#526b74'; c.font = '14px monospace';
       c.fillText('SWIPE KEY CARD TO ACTIVATE', 130, 190);
     } else if (state === 'online') {
       c.fillStyle = '#001408'; c.fillRect(0,0,cv.width,cv.height);
@@ -246,13 +248,16 @@ P.S. 别再用这个邮箱回我，明早我就把它烧了。</div>
 // 房间 4: 紧急流程海报
 export function makePosterTex() {
   return makeScreenTexture((c, cv) => {
-    c.fillStyle = '#0a1410'; c.fillRect(0,0,cv.width,cv.height);
-    c.strokeStyle = '#ff3030'; c.lineWidth = 4;
-    c.strokeRect(10, 10, cv.width-20, cv.height-20);
-    c.fillStyle = '#ff5050'; c.font = 'bold 26px monospace';
-    c.fillText('!! EMERGENCY ABORT !!', 90, 55);
-    c.fillStyle = '#9fffbf'; c.font = '17px monospace';
-    let y = 95;
+    c.fillStyle='#dcd7c6';c.fillRect(0,0,cv.width,cv.height);
+    // 纸色、轻微纤维与折痕。海报文字仍为原有紧急流程。
+    for(let i=0;i<18000;i++) {
+      const x=(i*73.27)%cv.width,y=(i*119.13)%cv.height;
+      c.fillStyle=i%2?'rgba(91,77,54,.035)':'rgba(255,255,250,.07)';c.fillRect(x,y,1,1);
+    }
+    c.fillStyle='#943d34';c.fillRect(34,30,cv.width-68,76);
+    c.fillStyle='#eee7d8';c.font='bold 34px monospace';c.fillText('!! EMERGENCY ABORT !!',55,80);
+    c.fillStyle='#343a3b';c.font='26px monospace';
+    let y=154;
     [
       'On suspicious data exfiltration:',
       '',
@@ -270,6 +275,9 @@ export function makePosterTex() {
       'be charged to your access token.',
       '',
       '— Meridian Compliance · doc 8F-A12',
-    ].forEach(line => { c.fillText(line, 35, y); y += 22; });
-  }, 512, 512);
+    ].forEach(line=>{c.fillText(line,42,y);y+=37;});
+    c.strokeStyle='rgba(80,68,48,.08)';c.lineWidth=1;c.beginPath();c.moveTo(35,420);c.lineTo(cv.width-35,416);c.stroke();
+    c.strokeStyle='rgba(248,245,229,.42)';c.beginPath();c.moveTo(35,421);c.lineTo(cv.width-35,417);c.stroke();
+    const edge=c.createLinearGradient(0,0,cv.width,0);edge.addColorStop(0,'rgba(85,70,46,.07)');edge.addColorStop(.1,'transparent');edge.addColorStop(.9,'transparent');edge.addColorStop(1,'rgba(85,70,46,.09)');c.fillStyle=edge;c.fillRect(0,0,cv.width,cv.height);
+  },768,896);
 }

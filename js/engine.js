@@ -1,5 +1,6 @@
 /* global THREE */
 // 引擎核心：scene/camera/renderer/loop + 跨房间 inventory + 全局 flags + 房间注册/切换
+import { studioEnvironment } from './surfaces.js';
 import { showRoomBanner, fadeIn, fadeOut } from './ui/hud.js';
 import { resumeAudio, stopAllAmbient, toggleMute } from './sound.js';
 
@@ -10,7 +11,27 @@ scene.fog = new THREE.Fog(0x05070a, 14, 60);
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.05, 200);
 const renderer = new THREE.WebGLRenderer({ antialias:true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
+const environment = studioEnvironment(renderer);
+scene.environment = environment.texture;
+let quality = window.matchMedia('(pointer: coarse)').matches ? 'standard' : 'high';
+try { quality = localStorage.getItem('hackescape-quality') || quality; } catch (_) { /* 存储不可用时用默认画质 */ }
+function applyQuality() {
+  renderer.setPixelRatio(Math.min(quality === 'high' ? 1.75 : 1, window.devicePixelRatio));
+  renderer.shadowMap.enabled = quality === 'high';
+  renderer.shadowMap.needsUpdate = true;
+  const button = document.getElementById('quality-toggle');
+  if (button) { button.textContent = quality === 'high' ? '画质 · 精细' : '画质 · 流畅'; button.setAttribute('aria-label', button.textContent + '，点击切换'); }
+  try { localStorage.setItem('hackescape-quality', quality); } catch (_) { /* 不影响游戏 */ }
+}
+applyQuality();
+document.getElementById('quality-toggle')?.addEventListener('click', () => {
+  quality = quality === 'high' ? 'standard' : 'high'; applyQuality();
+});
 document.getElementById('scene').appendChild(renderer.domElement);
 
 // 共享环境光（每个房间默认采用，可被房间 init 覆盖强度）
@@ -131,6 +152,7 @@ const player = {
 
 // === 主循环 ===
 const clock = new THREE.Clock();
+let shadowElapsed = 0;
 const updaters = []; // 每帧调用，传入 dt
 function addUpdate(fn) { updaters.push(fn); }
 
@@ -155,6 +177,12 @@ function tick() {
     if (current.cullableWalls) cullWalls(current.cullableWalls);
   }
 
+  // 家具开合会改变投影；以 4 Hz 更新阴影，避免每帧重绘点光的六张阴影贴图。
+  shadowElapsed += dt;
+  if (shadowElapsed >= .25) { renderer.shadowMap.needsUpdate = true; shadowElapsed = 0; }
+  // 开场压低曝光；读取原台灯的光照状态，不推进或修改任何谜题状态。
+  const powerLight = current?.group.userData.visualPowerLight;
+  renderer.toneMappingExposure = powerLight && powerLight.intensity === 0 ? .45 : 1.0;
   renderer.render(scene, camera);
 }
 

@@ -1,6 +1,9 @@
 /* global THREE */
 // 房间 3: 主管办公室 (7F)
 import { engine } from '../engine.js';
+import { dressRoom } from '../scenery.js';
+import { discoverEgg } from '../easter-eggs.js';
+import { rubberDuck } from '../easter-props.js';
 import { M } from '../materials.js';
 import { aabb, aabbFromMesh } from '../collision.js';
 import { pickable } from '../interact.js';
@@ -316,6 +319,14 @@ export default function build() {
     book.position.set(0, 1.0 + row*0.7, -0.5 + i*0.18); bookShelf.add(book);
   }
 
+  // 放在书架最下层的空格里，脚底贴住层板。
+  const duck=rubberDuck(); duck.position.set(-.025,.0775,.38);
+  duck.rotation.y=-Math.PI/2; bookShelf.add(duck);
+  pickables.push(pickable({id:'r3_duck',mesh:duck,label:'角落里的小黄鸭',onClick:()=>{
+    SFX.click(); discoverEgg('duck');
+    openViewer('<div class="egg-document"><h3>橡皮鸭调试</h3><p>你把问题讲给鸭子听。</p><p>讲到一半，发现自己漏了一个分号。</p><p>鸭子没有回答，看起来却十分满意。</p></div>');
+  }}));
+
   // === 家具碰撞（能挡能站）===
   group.updateMatrixWorld(true);
   walls.push(aabbFromMesh(desk, 0.02));      // 办公桌 (顶 1.11m，可跳上)
@@ -472,6 +483,8 @@ export default function build() {
     if (!F.usbTaken || !F.codeRead) return engine.setObjective('把保险箱里的 USB 和便条都收走。');
     if (!F.leaving)           return engine.setObjective('用便条上的 4 位码解锁机要室门。');
   }
+
+  dressRoom(group, { kind:'office',W,D,H,pickables,shadowLight:deskLight });
 
   return {
     id: 'room3',

@@ -1,6 +1,9 @@
 /* global THREE */
 // 房间 4: 顶层机要室 (8F) — 高潮 · 倒计时
 import { engine } from '../engine.js';
+import { dressRoom } from '../scenery.js';
+import { discoverEgg, hasEgg, foundEggs } from '../easter-eggs.js';
+import { paperPlaque } from '../easter-props.js';
 import { M } from '../materials.js';
 import { aabb, aabbFromMesh } from '../collision.js';
 import { pickable } from '../interact.js';
@@ -57,13 +60,24 @@ export default function build() {
   wall(0.2, H, 2.5, W/2, H/2,  3.25, '-x');
   wall(0.2, 1.8, 4,  W/2, H - 0.9, 0, '-x');
 
+  const slogan=paperPlaque('HACK THE PLANET',['NIGHT SHIFT / KEEP IT'],.86,.30);
+  slogan.name='old-hacker-sticker'; slogan.position.set(-W/2+.11,1.8,2.7);
+  slogan.rotation.y=Math.PI/2; group.add(slogan);
+  pickables.push(pickable({id:'r4_sticker',mesh:slogan,label:'褪色的贴纸',onClick:()=>{
+    engine.flags.set('egg:sloganHint',true); SFX.paperRustle();
+    openViewer('<div class="egg-document"><h3>HACK THE PLANET</h3><p>一张被保安刮过的旧贴纸，口号还留着。</p><p>有人用笔添了一句：</p><p>“这台机器偶尔也听得懂口号。”</p></div>');
+  }}));
+
   // ========= 中央升起的工作站平台 =========
   const podium = new THREE.Group(); podium.position.set(0, 0, 0); group.add(podium);
   const ring = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.4, 0.3, 24), M.metalDark);
+  ring.name = 'workstation-platform-base';
   ring.position.y = 0.15; podium.add(ring);
   const top = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 0.06, 24),
     new THREE.MeshStandardMaterial({ color:0x223344, roughness:0.6, metalness:0.3 }));
+  top.name = 'workstation-platform-top';
   top.position.y = 0.32; podium.add(top);
+  const platformSurfaceY = top.position.y + top.geometry.parameters.height / 2;
 
   // 中央终端
   const ws = new THREE.Group();
@@ -80,7 +94,7 @@ export default function build() {
   const wsUsb = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.16),
     new THREE.MeshStandardMaterial({ color:0x111418 }));
   wsUsb.position.set(0.5, 0.35, 0.36); ws.add(wsUsb);
-  ws.position.set(0, 0.32, 0); podium.add(ws);
+  ws.position.set(0, platformSurfaceY, 0); podium.add(ws);
   pickables.push(pickable({ id:'r4_ws', mesh:ws, label:'中央工作站', onClick: onClickWS }));
 
   // ========= 巨型倒计时屏（墙上）=========
@@ -93,21 +107,27 @@ export default function build() {
   cdFace.position.z = 0.06; cdScreen.add(cdFace);
   cdScreen.position.set(0, 4.2, -D/2 + 0.2); group.add(cdScreen);
   // 倒计时数字（用 canvas 动态贴图）
-  const cdCanvas = document.createElement('canvas'); cdCanvas.width = 1024; cdCanvas.height = 256;
-  const cdTex = new THREE.CanvasTexture(cdCanvas); cdTex.magFilter = THREE.NearestFilter;
+  const cdCanvas = document.createElement('canvas'); cdCanvas.width = 1440; cdCanvas.height = 420;
+  const cdTex = new THREE.CanvasTexture(cdCanvas); cdTex.encoding = THREE.sRGBEncoding; cdTex.magFilter = THREE.LinearFilter; cdTex.anisotropy = 4;
   cdFace.material = new THREE.MeshBasicMaterial({ map: cdTex, toneMapped:false });
 
   function drawCountdownTex(remain, frozen=false) {
     const ctx = cdCanvas.getContext('2d');
-    ctx.fillStyle = frozen ? '#001020' : '#180000';
+    ctx.fillStyle = '#050b11';
     ctx.fillRect(0,0,cdCanvas.width,cdCanvas.height);
-    ctx.fillStyle = frozen ? '#6effb4' : '#ff3030';
-    ctx.font = 'bold 50px monospace';
-    ctx.fillText(frozen ? '!! TRANSFER ABORTED !!' : '!! DATA EXFILTRATION IN PROGRESS !!', 80, 70);
-    ctx.font = 'bold 160px monospace';
+    ctx.fillStyle = '#748991';ctx.font='24px monospace';
+    ctx.fillText('MERIDIAN  /  OBELISK TRANSFER',42,43);
+    ctx.fillText('SECURE / 08',1160,43);
+    ctx.strokeStyle='#263540';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(42,65);ctx.lineTo(1398,65);ctx.stroke();
+    ctx.fillStyle = frozen ? '#8cd2b9' : '#ce6158';
+    ctx.font = '32px monospace';ctx.textAlign='center';
+    ctx.fillText(frozen ? '!! TRANSFER ABORTED !!' : '!! DATA EXFILTRATION IN PROGRESS !!',720,117);
+    ctx.font = 'bold 218px monospace';
     const m = Math.floor(remain/60), s = Math.floor(remain%60);
     const t = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    ctx.fillText(t, 350, 220);
+    ctx.fillText(t,720,333);
+    ctx.fillStyle='#5d727d';ctx.font='21px monospace';ctx.fillText('MONITORED SESSION / DO NOT DISCONNECT',720,388);
+    ctx.textAlign='start';
     cdTex.needsUpdate = true;
   }
   drawCountdownTex(120);
@@ -199,12 +219,6 @@ be charged to your access token.
     engine.showHint('物理切断会触发整层警报 — 还是优先在终端里 kill 进程。');
   }}));
 
-  // === 家具碰撞（能挡能站）===
-  group.updateMatrixWorld(true);
-  walls.push(aabbFromMesh(podium, 0.02));    // 中央 podium (顶 0.32m，轻松跳上)
-  walls.push(aabbFromMesh(ws, 0.02));        // 工作站 (顶 1.67m，从 podium 上能跳)
-  walls.push(aabbFromMesh(lever, 0.02));     // 紧急切断闸柱
-
   // ========= 灯光 =========
   group.add(new THREE.AmbientLight(0x4060a0, 0.5));
   const blueRim = new THREE.PointLight(0x4488ff, 1.2, 16, 1.6);
@@ -217,12 +231,16 @@ be charged to your access token.
 
   // ========= 状态屏（占位）=========
   function setWSScreen(face, text, color='#9fffbf') {
-    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256;
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 512;
     const ctx = cv.getContext('2d');
-    ctx.fillStyle = '#001408'; ctx.fillRect(0,0,cv.width,cv.height);
-    ctx.fillStyle = color; ctx.font = 'bold 36px monospace';
-    ctx.fillText(text, 40, 130);
-    const tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter;
+    ctx.fillStyle = '#070e13'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle='#708992';ctx.font='22px monospace';ctx.fillText('MERIDIAN / SECURE TERMINAL',38,46);
+    ctx.strokeStyle='#263741';ctx.beginPath();ctx.moveTo(38,67);ctx.lineTo(986,67);ctx.stroke();
+    ctx.fillStyle = color; ctx.font = '42px monospace';ctx.textAlign='center';
+    ctx.fillText(text,512,264);ctx.textAlign='start';
+    ctx.fillStyle='#48666d';ctx.font='20px monospace';ctx.fillText('OBELISK  /  LOCAL ACCESS',38,471);
+    ctx.fillStyle=color;ctx.fillRect(955,455,10,10);
+    const tx = new THREE.CanvasTexture(cv);tx.encoding=THREE.sRGBEncoding;tx.magFilter=THREE.LinearFilter;tx.anisotropy=4;
     face.material = new THREE.MeshBasicMaterial({ map: tx, toneMapped:false });
   }
 
@@ -253,14 +271,28 @@ be charged to your access token.
     openWSTerminal();
   }
 
+  function hackPlanet(a,t) {
+    if(a.join(' ').toLowerCase()!=='the planet') return t.print('口号似乎少了点什么。');
+    discoverEgg('planet'); t.print('HACK THE PLANET\n先把这一栋救下来。');
+  }
+
   function openWSTerminal() {
     openTerminal({
       promptHead: 'root@meridian-secure-08:~#',
+      visibleCommands:['help','status','kill','sudo','audit','submit','clear','exit'],
+      complete: tokens => {
+        if(tokens.length===1) return ['help','status','kill','sudo','audit','submit','clear','exit',...(engine.flags.get('egg:sloganHint')?['hack']:[])];
+        if(tokens[0]==='sudo'&&tokens.length===2) return ['kill'];
+        if(tokens[0]==='submit'&&tokens.length===2) return ['evidence'];
+        if(tokens[0].toLowerCase()==='hack'&&engine.flags.get('egg:sloganHint')) return ['the planet'];
+        return [];
+      },
       init: F.transferKilled ? [
         '── shell active · transfer aborted at ' + (120 - cdRemain) + 's ──',
         '现在该把 Marcus 钉死在审计日志上：',
         '  audit                  · 看清陷害链',
         '  submit evidence 1 2 3  · 把三件证据打包发出去',
+        '这台机器偶尔也听得懂口号。',
       ] : [
         '╔══════════════════════════════════════════════════╗',
         '║  EMERGENCY · DATA EXFILTRATION IN PROGRESS        ║',
@@ -274,8 +306,12 @@ be charged to your access token.
         '  2) sudo kill -9 <PID>     → SIGKILL 强制结束 (需要 admin token)',
         '  3) audit                  → 看陷害链',
         '  4) submit evidence 1 2 3  → 上交证据',
+        '这台机器偶尔也听得懂口号。',
       ],
       commands: {
+        hack: hackPlanet,
+        HACK: hackPlanet,
+        hacktheplanet: (_,t)=>hackPlanet(['the','planet'],t),
         help: (_, t) => {
           t.print('help, status, audit, clear, exit');
           t.print('kill -9 <PID>                # SIGKILL，普通用户');
@@ -402,7 +438,9 @@ be charged to your access token.
     hideCountdown();
     stopAllAmbient();
     SFX.win();
-    document.getElementById('win-stats').textContent = `通关用时：${(120 - cdRemain).toFixed(0)} 秒余裕`;
+    const stats=document.getElementById('win-stats');
+    stats.textContent='通关用时：'+(120-cdRemain).toFixed(0)+' 秒余裕'+(foundEggs().length?' · 发现 '+foundEggs().length+' 条探索记录':'')+(hasEgg('planet')?'\nHACK THE PLANET · 先把这一栋救下来。':'');
+    stats.style.whiteSpace='pre-line';
     openModal('win');
   }
 
@@ -415,6 +453,15 @@ be charged to your access token.
     SFX.lose();
     openModal('lose');
   }
+
+  dressRoom(group, { kind:'secure',W,D,H,pickables,shadowLight:podiumLight });
+
+  // 用最终模型生成碰撞；平台只包含底座和顶板，屏幕单独挡住玩家。
+  group.updateMatrixWorld(true);
+  walls.push(aabbFromMesh(ring, 0.02));
+  walls.push(aabbFromMesh(top, 0.02));
+  walls.push(aabbFromMesh(ws, 0.02));
+  walls.push(aabbFromMesh(lever, 0.02));
 
   return {
     id: 'room4',
